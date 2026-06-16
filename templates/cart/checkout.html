@@ -1,0 +1,484 @@
+{% load currency_filters %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalizar Compra | TechStore</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --wood-dark: #3e2723;
+            --wood-medium: #6d4c41;
+            --wood-light: #d7ccc8;
+            --wood-accent: #c08552;
+            --bg-color: #f5f0eb;
+            --text-dark: #2c1e16;
+            --white: #ffffff;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+        }
+        header {
+            background-color: var(--wood-dark);
+            padding: 20px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            color: var(--white);
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--white);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .btn-home {
+            background-color: var(--wood-accent);
+            color: var(--white);
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        .checkout-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+        .order-summary {
+            background-color: var(--white);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .summary-title {
+            color: var(--wood-dark);
+            margin-bottom: 20px;
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .summary-total {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: var(--wood-accent);
+        }
+        .checkout-form {
+            background-color: var(--white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .form-section {
+            margin-bottom: 25px;
+        }
+        .form-section h3 {
+            color: var(--wood-dark);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 2px solid var(--wood-light);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .radio-option:hover, .radio-option input:checked + .radio-label {
+            border-color: var(--wood-accent);
+            background-color: var(--wood-light);
+        }
+        .radio-option input {
+            width: auto;
+        }
+        .radio-icon {
+            font-size: 1.5rem;
+            width: 40px;
+        }
+        .radio-label {
+            flex: 1;
+            cursor: pointer;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--wood-light);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            background-color: var(--white);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--wood-accent);
+        }
+        .form-select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--wood-light);
+            border-radius: 10px;
+            font-size: 1rem;
+            background-color: var(--white);
+            transition: border-color 0.3s;
+            cursor: pointer;
+        }
+        .form-select:focus {
+            outline: none;
+            border-color: var(--wood-accent);
+        }
+        .detail-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--wood-light);
+        }
+
+        .detail-section.hidden {
+            display: none;
+        }
+        .errorlist {
+            color: #d32f2f;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            list-style: none;
+        }
+        .btn-confirm {
+            width: 100%;
+            background-color: var(--wood-accent);
+            color: var(--white);
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-confirm:hover {
+            background-color: #a67041;
+        }
+        .back-link {
+            display: inline-block;
+            color: var(--wood-medium);
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+
+        /* Custom confirmation modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(62, 39, 35, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-dialog {
+            background: var(--white);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 450px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-dialog {
+            transform: scale(1);
+        }
+        .modal-title {
+            color: var(--wood-dark);
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .modal-message {
+            color: var(--text-dark);
+            line-height: 1.6;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        .modal-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            max-width: 180px;
+        }
+        .modal-btn-yes {
+            background: var(--wood-accent);
+            color: var(--white);
+        }
+        .modal-btn-yes:hover {
+            background: #a67041;
+        }
+        .modal-btn-no {
+            background: var(--wood-light);
+            color: var(--text-dark);
+            border: 2px solid var(--wood-light);
+        }
+        .modal-btn-no:hover {
+            background: var(--wood-medium);
+            color: var(--white);
+        }
+        @media (max-width: 768px) {
+            .checkout-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="{% url 'home' %}" class="logo">TechStore</a>
+        <nav class="nav-links">
+            <a href="{% url 'home' %}" class="btn-home">Inicio</a>
+            <a href="{% url 'cart_detail' %}" class="btn-home">Carrito</a>
+        </nav>
+    </header>
+    <div class="container">
+        <a href="{% url 'cart_detail' %}" class="back-link">← Volver al carrito</a>
+        <div class="checkout-container">
+            <div class="order-summary">
+                <h2 class="summary-title">Resumen del Pedido</h2>
+                {% for item in cart.items.all %}
+                <div class="summary-item">
+                    <span>{% if item.content_type.model == 'service' %}🔧 {% else %}📦 {% endif %}{{ item.item.name }} x {{ item.quantity }}</span>
+                    <span>{{ item.subtotal|currency }}</span>
+                </div>
+                {% endfor %}
+                <div class="summary-item">
+                    <span>Total ({{ cart.item_count }} artículos)</span>
+                    <span class="summary-total">{{ cart.total|currency }}</span>
+                </div>
+            </div>
+            <div class="checkout-form">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-section">
+                        <h3>💳 Método de Pago</h3>
+
+<div class="radio-group">
+    {{ form.payment_method }}
+</div>
+
+                    </div>
+                    
+                    <!-- Bank details form -->
+                    <div class="form-section" id="bank-details" class="detail-section hidden">
+                        <h4>Detalles de Transferencia Bancaria</h4>
+                        <div class="form-group">
+                            {{ form.bank_name.label_tag }}
+                            {{ form.bank_name }}
+                            {{ form.bank_name.errors }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.bank_account_number.label_tag }}
+                            {{ form.bank_account_number }}
+                            {{ form.bank_account_number.errors }}
+                        </div>
+                    </div>
+                    
+                    <!-- Card details form -->
+                    <div class="form-section" id="card-details" class="detail-section hidden">
+                        <h4>Detalles de Tarjeta</h4>
+                        <div class="form-group">
+                            {{ form.card_holder_name.label_tag }}
+                            {{ form.card_holder_name }}
+                            {{ form.card_holder_name.errors }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.card_number.label_tag }}
+                            {{ form.card_number }}
+                            {{ form.card_number.errors }}
+                        </div>
+                    </div>
+
+                    <!-- COD pickup section -->
+                    <div class="form-section" id="cod-details" class="detail-section hidden">
+                        <h4>📋 AVISO Pago Contra Entrega</h4>
+                        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+
+                            Debes proporcionar tu nombre completo, número de documento, fecha estimada de ida a la sede y número de teléfono.
+                        </div>
+                        <div class="form-group">
+                            {{ form.pickup_full_name.label_tag }}
+                            {{ form.pickup_full_name }}
+                            {{ form.pickup_full_name.errors }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.pickup_document.label_tag }}
+                            {{ form.pickup_document }}
+                            {{ form.pickup_document.errors }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.pickup_phone.label_tag }}
+                            {{ form.pickup_phone }}
+                            {{ form.pickup_phone.errors }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.pickup_date.label_tag }}
+                            {{ form.pickup_date }}
+                            {{ form.pickup_date.errors }}
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h3>🚚 Opción de Entrega</h3>
+
+
+<div class="radio-group">
+    {{ form.delivery_type }}
+</div>
+
+                    </div>
+                    <div class="form-section" id="delivery-details" class="detail-section hidden">
+                        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            Si el pago es por domicilio, proporcionar la direccion de envio en donde se entregara el producto
+                        </div>
+                        <div class="form-group">
+                            {{ form.delivery_address.label_tag }}
+                            {{ form.delivery_address }}
+                            {{ form.delivery_address.errors }}
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        {{ form.non_field_errors }}
+                    </div>
+<button id="confirm-btn" type="submit" class="btn-confirm">Confirmar Pedido y Pagar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-dialog">
+            <h2 class="modal-title">🛒 Confirmar Pedido</h2>
+            <p class="modal-message">¿Realmente desea proceder al pago? Esta acción no se puede deshacer.</p>
+            <div class="modal-buttons">
+                <button id="modal-no" class="modal-btn modal-btn-no">Seguir explorando</button>
+                <button id="modal-yes" class="modal-btn modal-btn-yes">Sí, confirmar pago</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const paymentSelect = document.getElementById('payment_method_select');
+            const deliverySelect = document.getElementById('delivery_type_select');
+            const bankDetails = document.getElementById('bank-details');
+            const cardDetails = document.getElementById('card-details');
+            const codDetails = document.getElementById('cod-details');
+            const deliveryDetails = document.getElementById('delivery-details');
+
+            paymentSelect.addEventListener('change', function() {
+                bankDetails.classList.add('hidden');
+                cardDetails.classList.add('hidden');
+                codDetails.classList.add('hidden');
+                
+                if (this.value === 'transfer') {
+                    bankDetails.classList.remove('hidden');
+                } else if (this.value === 'card') {
+                    cardDetails.classList.remove('hidden');
+                } else if (this.value === 'contra_entrega') {
+                    codDetails.classList.remove('hidden');
+                }
+            });
+
+            deliverySelect.addEventListener('change', function() {
+                deliveryDetails.classList.add('hidden');
+                if (this.value === 'delivery') {
+                    deliveryDetails.classList.remove('hidden');
+                }
+            });
+
+            // Initial state
+            paymentSelect.dispatchEvent(new Event('change'));
+            deliverySelect.dispatchEvent(new Event('change'));
+        });
+
+        // Confirmation modal
+        const confirmBtn = document.getElementById('confirm-btn');
+        const modal = document.getElementById('confirm-modal');
+        const modalYes = document.getElementById('modal-yes');
+        const modalNo = document.getElementById('modal-no');
+
+        confirmBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            modal.classList.add('active');
+        });
+
+        modalNo.addEventListener('click', function() {
+            modal.classList.remove('active');
+        });
+
+        modalYes.addEventListener('click', function() {
+            modal.classList.remove('active');
+            confirmBtn.closest('form').submit();
+        });
+
+        // Close modal on overlay click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    </script>
+
+</body>
+</html>
