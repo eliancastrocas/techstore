@@ -28,3 +28,4 @@ tzdata==2025.3
 urllib3==2.6.3
 virtualenv==20.39.0
 yarl==1.23.0
+whitenoise==6.4.0
