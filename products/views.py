@@ -1,19 +1,52 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from .models import Product, Service, FormRequest, StockMovement
+from .models import Product, Service, FormRequest, StockMovement, ProductDetails
 from .forms import ProductForm, ServiceForm, FormRequestForm
 from users.models import UserProfile
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
+
 from django.conf import settings
 import os
 import csv
 from .dian_api import get_cities, get_departments
 
-# Create your views here.
-
 from cart.models import Cart
+
+import logging
+logger = logging.getLogger(__name__)
+
+def _get_vendor_profile_or_none(user):
+    """Devuelve el perfil del vendedor autenticado si existe, si no None."""
+    if not getattr(user, 'is_authenticated', False):
+        return None
+    profile = getattr(user, 'profile', None)
+    if profile is None:
+        return None
+    # Normalizar validación de rol (evitar mezclar role vs is_vendedor)
+    if hasattr(profile, 'is_vendedor'):
+        if profile.is_vendedor():
+            return profile
+        return None
+    if getattr(profile, 'role', None) == 'vendedor':
+        return profile
+    return None
+
+def _debug_permission_denied(request, product=None, reason=''):
+    vendor_profile = _get_vendor_profile_or_none(request.user)
+    user_repr = f"{request.user.id}:{request.user.username}" if request.user.is_authenticated else 'anon'
+    payload = {
+        'user': user_repr,
+        'profile_id': getattr(vendor_profile, 'id', None),
+        'product_id': getattr(product, 'id', None),
+        'product_seller_id': getattr(product, 'seller_id', None),
+        'reason': reason,
+    }
+    # Mensajes visibles para depuración (temporal)
+    messages.error(request, f"DEBUG permiso denegado: {payload}")
+    logger.warning('Permission denied: %s', payload)
+
 
 
 def product_search(request):
@@ -171,7 +204,7 @@ from django.contrib.auth.decorators import user_passes_test
 
 
 @login_required
-@user_passes_test(lambda u: hasattr(u, "profile") and u.profile.is_vendedor())
+@user_passes_test(lambda u: hasattr(u, "profile") and getattr(u.profile, "role", None) == "vendedor")
 def product_create(request):
     try:
         profile = request.user.profile
@@ -202,6 +235,29 @@ def product_create(request):
                 },
             )
 
+            # ProductDetails se guarda dentro de ProductForm.save()
+            # (si el form se usa correctamente). Como aquí usamos update_or_create
+            # con campos manuales, aseguramos la existencia de details.
+            if not hasattr(product, "details"):
+                ProductDetails.objects.create(product=product)
+
+            # Guardar detalles adicionales desde el POST
+            details_fields = [
+                "referencias",
+                "especificaciones_tecnicas",
+                "caracteristicas",
+                "contenido_caja",
+                "compatibilidades",
+                "dimensiones",
+                "materiales",
+                "garantia_detalle",
+                "otras_comentarios",
+            ]
+            details, _ = ProductDetails.objects.get_or_create(product=product)
+            for f in details_fields:
+                setattr(details, f, request.POST.get(f, ""))
+            details.save()
+
             if created:
                 # Only create movimento if there's NO existing entrada for this product
                 if product.stock > 0 and profile:
@@ -226,22 +282,36 @@ def product_create(request):
 @login_required
 @user_passes_test(lambda u: hasattr(u, "profile") and u.profile.is_vendedor())
 def product_update(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    # Get user profile
-    try:
-        profile = request.user.profile
-    except UserProfile.DoesNotExist:
-        profile = None
+    vendor_profile = _get_vendor_profile_or_none(request.user)
+    if not vendor_profile:
+        _debug_permission_denied(request, product=None, reason='usuario sin perfil vendedor')
+        return redirect('product_list')
 
-    # Asegurar que el vendedor solo edite sus propios productos
-    if profile and product.seller_id != profile.id:
-        messages.error(request, "No tienes permisos para editar este producto.")
-        return redirect("product_list")
+    # Cargar únicamente el producto que pertenece al vendedor autenticado.
+    # Si no existe, denegamos (evita validaciones “a posteriori”).
+    try:
+        product = Product.objects.select_related('seller__user').get(pk=pk, seller=vendor_profile)
+    except Product.DoesNotExist:
+        # Debug detallado de por qué falla.
+        # Intentamos recuperar sin el filtro para poder mostrar seller_id (si existe).
+        try:
+            any_product = Product.objects.only('id', 'seller_id').get(pk=pk)
+        except Product.DoesNotExist:
+            any_product = None
+        _debug_permission_denied(
+            request,
+            product=any_product,
+            reason=f'no existe Product(pk={pk}, seller_id={vendor_profile.id})',
+        )
+        return redirect('product_list')
 
     if request.method == "POST":
+        messages.info(
+            request,
+            f"DEBUG update OK: user={request.user.username}, vendor_profile_id={vendor_profile.id}, product_id={product.id}, product_seller_id={product.seller_id}",
+        )
         form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
-            # guardar TODOS los campos (price, stock, etc.)
             form.save()
             messages.success(request, "Producto actualizado exitosamente.")
             return redirect("product_list")
@@ -256,21 +326,74 @@ def product_update(request, pk):
 
 
 
+
 @login_required
 @user_passes_test(lambda u: hasattr(u, "profile") and u.profile.is_vendedor())
 def product_delete(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    # Get user profile
+    vendor_profile = _get_vendor_profile_or_none(request.user)
+    if not vendor_profile:
+        _debug_permission_denied(request, product=None, reason='usuario sin perfil vendedor')
+        return redirect('product_list')
+
+    # Cargar únicamente el producto que pertenece al vendedor autenticado.
+    # Si no existe, denegamos.
     try:
-        profile = request.user.profile
-    except UserProfile.DoesNotExist:
-        profile = None
+        product = Product.objects.select_related('seller__user').get(pk=pk, seller=vendor_profile)
+    except Product.DoesNotExist:
+        # Debug detallado de por qué falla.
+        try:
+            any_product = Product.objects.only('id', 'seller_id').get(pk=pk)
+        except Product.DoesNotExist:
+            any_product = None
+        _debug_permission_denied(
+            request,
+            product=any_product,
+            reason=f'no existe Product(pk={pk}, seller_id={vendor_profile.id})',
+        )
+        return redirect('product_list')
 
     if request.method == "POST":
+        messages.info(
+            request,
+            f"DEBUG delete OK: user={request.user.username}, vendor_profile_id={vendor_profile.id}, product_id={product.id}, product_seller_id={product.seller_id}",
+        )
         product.delete()
         messages.success(request, "Producto eliminado exitosamente.")
         return redirect("product_list")
+
     return render(request, "products/product_confirm_delete.html", {"product": product})
+
+
+
+
+
+
+def product_details(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    # Mostramos solo si hay stock > 0 (misma lógica de catálogo)
+    if product.stock <= 0:
+        messages.error(request, "Este producto no está disponible en este momento.")
+        return redirect("product_catalog")
+
+    # Garantizar que exista details
+    try:
+        details = product.details
+    except ProductDetails.DoesNotExist:
+        details = None
+
+    from cart.models import Cart
+    cart = Cart.get_cart(request)
+
+    return render(
+        request,
+        "products/product_details.html",
+        {
+            "product": product,
+            "details": details,
+            "cart": cart,
+            "cart_count": getattr(cart, "item_count", 0),
+        },
+    )
 
 
 def services_catalog(request):
@@ -290,26 +413,35 @@ def services_catalog(request):
 @login_required
 @user_passes_test(lambda u: hasattr(u, "profile") and getattr(u.profile, "role", None) == "vendedor")
 def vendor_form_requests(request):
-    """Vendor dashboard for form requests and warranty claims"""
-    from orders.models import WarrantyClaim
 
+    """Vendor dashboard for service requests sent by clients (reparación y mantenimiento)."""
     profile = request.user.profile
-    form_requests = FormRequest.objects.filter(status="pending").order_by("-created_at")
-    warranty_claims = (
-        WarrantyClaim.objects.filter(order__items__product__seller=profile)
-        .distinct()
-        .order_by("-created_at")
+
+    # Para mantener compatibilidad, priorizamos las solicitudes asignadas al vendedor.
+    # Según el requerimiento, clientes no deben acceder a esta vista.
+    form_requests_qs = FormRequest.objects.filter(seller=profile)
+
+    # Filtrar: inicialmente reparaciones y mantenimientos.
+    # - Reparación: service_option='reparacion'
+    # - Mantenimiento: service_option='mantenimiento'
+    # Nota: no se importa "models" en este archivo; usar Q directamente.
+    form_requests_qs = form_requests_qs.filter(
+        Q(service_option="reparacion") | Q(service_option="mantenimiento")
     )
+
+
+    # Mostrar primero pendientes (y luego el resto), dejando orden por fecha.
+    form_requests = form_requests_qs.order_by("status", "-created_at")
+
 
     return render(
         request,
-        "products/vendor_form_requests.html",
+        "products/vendor_services_panel.html",
         {
             "form_requests": form_requests,
-            "warranty_claims": warranty_claims,
-            "object_list": form_requests,
         },
     )
+
 
 
 @login_required
@@ -434,6 +566,9 @@ def cities_list(request):
     return render(request, "products/cities.html", context)
 
 
+
+
+@login_required
 def reparacion_form(request):
     """Formulario específico para reparación de dispositivos"""
     from cart.models import Cart
@@ -442,20 +577,83 @@ def reparacion_form(request):
 
     if request.method == "POST":
         form = FormRequestForm(request.POST, request.FILES)
+
         if form.is_valid():
-            form.save()
-            messages.success(request, "¡Solicitud de reparación enviada exitosamente! Te contactaremos en 24 horas.")
+            form_request = form.save(commit=False)
+
+
+
+
+
+            # Asociar automáticamente al vendedor correcto.
+            # Regla: el panel lista por FormRequest.seller, así que NO debe apuntar al cliente.
+            # Asignamos el primer vendedor que esté verificado/activo; si no existe, mantenemos el valor actual.
+            vendedor = None
+            if hasattr(request.user, "profile"):
+                try:
+                    vendedor = UserProfile.objects.filter(role="vendedor").order_by("id").first()
+                except Exception:
+                    vendedor = None
+            if vendedor:
+                form_request.seller = vendedor
+
+
+
+            form_request.customer_name = (
+                request.user.get_full_name() or request.user.username
+            )
+            form_request.email = request.user.email or ''
+
+            # Guardar imagen adjunta (si viene en el POST)
+            # El formulario ya acepta request.FILES.
+            # Si no se sube nada, se mantiene en None.
+            if 'image' in request.FILES:
+                form_request.image = request.FILES.get('image')
+            elif 'images' in request.FILES:
+                # Compatibilidad por si el input usa nombre plural
+                # (en caso de que luego queramos múltiples).
+                uploaded = request.FILES.get('images')
+                if uploaded:
+                    form_request.image = uploaded
+
+            # Valores del tipo/servicio para que el modelo valide
+            form_request.service_type = 'garantia'
+            form_request.service_option = 'reparacion'
+            form_request.priority = 'normal'
+            form_request.status = 'pending'
+
+            form_request.save()
+
+
+            messages.success(
+                request,
+                "¡Solicitud de reparación enviada exitosamente! Te contactaremos en 24 horas.",
+            )
             return redirect("services_catalog")
         else:
+            # Mostrar errores reales para depuración (no ocultarlos)
             messages.error(request, "Por favor corrija los errores en el formulario.")
-    else:
-        form = FormRequestForm()
 
-    return render(request, "products/reparacion_form.html", {
-        "form": form, 
-        "cart": cart, 
-        "cart_count": cart.item_count
-    })
+    else:
+        form = FormRequestForm(initial={
+            'service_type': 'garantia',
+            'service_option': 'reparacion',
+            'priority': 'normal',
+            'customer_name': request.user.get_full_name() or request.user.username,
+            'email': request.user.email or '',
+        })
+
+    return render(
+        request,
+        "products/reparacion_form.html",
+        {
+            "form": form,
+            "cart": cart,
+            "cart_count": cart.item_count,
+        },
+    )
+
+
 
 
 def mantenimiento_form(request):
@@ -623,3 +821,67 @@ def service_delete(request, pk):
         messages.success(request, "Servicio eliminado exitosamente.")
         return redirect("service_list")
     return render(request, "products/service_confirm_delete.html", {"service": service})
+
+
+@login_required
+@user_passes_test(lambda u: hasattr(u, "profile") and getattr(u.profile, "role", None) == "vendedor")
+def update_form_request_status(request, pk):
+    """Actualiza el estado de una solicitud (AJAX) para el vendedor."""
+    from django.http import JsonResponse
+
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "message": "Método no permitido"}, status=405)
+
+    profile = request.user.profile
+    form_request = get_object_or_404(FormRequest, pk=pk, seller=profile)
+
+    new_status = request.POST.get("status")
+    allowed = {c[0] for c in FormRequest.STATUS_CHOICES}
+
+    if not new_status:
+        return JsonResponse({"ok": False, "message": "Estado no recibido"}, status=400)
+
+    if new_status not in allowed:
+        return JsonResponse({"ok": False, "message": "Estado inválido"}, status=400)
+
+    try:
+        form_request.status = new_status
+        form_request.save(update_fields=["status", "updated_at"])
+    except Exception as e:
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": f"No se pudo guardar el estado: {str(e)}",
+            },
+            status=500,
+        )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "status": form_request.status,
+            "status_display": form_request.get_status_display(),
+        }
+    )
+
+
+# Alias de compatibilidad con rutas existentes
+vendor_update_form_request_status = update_form_request_status
+
+
+
+@login_required
+@user_passes_test(lambda u: hasattr(u, "profile") and getattr(u.profile, "role", None) == "vendedor")
+def vendor_download_form_request_image(request, pk):
+    """Descarga la imagen adjunta desde el archivo almacenado en el modelo."""
+    profile = request.user.profile
+    form_request = get_object_or_404(FormRequest, pk=pk, seller=profile)
+
+    if not form_request.image:
+        return HttpResponse(status=404)
+
+    # Importante: usar el archivo del ImageField (no copiar). 
+    # FileResponse lee directamente desde el path real.
+    return FileResponse(form_request.image.open('rb'), as_attachment=True, filename=form_request.image.name)
+
+

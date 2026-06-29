@@ -7,7 +7,7 @@
     <title>Pedidos | TechStore</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
+<style>
         :root {
             --wood-dark: #3e2723;
             --wood-medium: #6d4c41;
@@ -25,6 +25,10 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
         
         body { background-color: var(--bg-color); color: var(--text-dark); }
+
+        /* Bloqueo scroll cuando el modal de delete está activo */
+        body.delete-modal-open { overflow: hidden; }
+
 
         .sidebar {
             width: 60px;
@@ -421,7 +425,8 @@
     {% if orders %}
     <div class="orders-container">
         {% for order in orders %}
-        <div class="order-card">
+        <div class="order-card" data-order-id="{{ order.id }}">
+
             <div class="order-header">
                 <div>
                     <span class="order-id">Pedido #{{ order.id }}</span>
@@ -482,15 +487,20 @@
                         <a href="{% url 'order_status_update' order.id 'delivered' %}" class="status-btn btn-delivered {% if order.status == 'delivered' %}active{% endif %}" title="Entregar">
                             <i class="fas fa-check"></i>
                         </a>
-                        <a href="{% url 'order_status_update' order.id 'cancelled' %}" class="status-btn btn-cancelled {% if order.status == 'cancelled' %}active{% endif %}" title="Cancelar" onclick="return confirm('¿Cancelar?')">
+                        <a href="#" class="status-btn btn-cancelled" title="Cancelar" data-action="noop" onclick="return false;">
                             <i class="fas fa-times"></i>
                         </a>
                     </div>
-                    {% elif order.status == 'shipped' and order.user == request.user %}
+
+                    {% elif order.user == request.user %}
                     <div class="status-actions">
-                        <a href="{% url 'order_status_update' order.id 'delivered' %}" class="status-btn btn-delivered" title="Confirmar recepción" onclick="return confirm('¿Confirmas que recibiste el pedido?')">
+                        {% if order.status == 'shipped' %}
+                        <a href="{% url 'order_status_update' order.id 'delivered' %}" class="status-btn btn-delivered" title="Confirmar recepción" onclick="return false;">
                             <i class="fas fa-check-double"></i> Confirmar Recepción
                         </a>
+                        {% endif %}
+
+
                     </div>
                     {% endif %}
                 </div>
@@ -548,5 +558,7 @@
     {% endif %}
 </div>
 
+
 </body>
 </html>
+

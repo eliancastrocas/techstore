@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     "orders",
 ]
 
+from django.views.decorators.cache import never_cache
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -57,6 +59,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "users.DisableCacheMiddleware.DisableCacheMiddleware",
 ]
 
 ROOT_URLCONF = "techstore.urls"

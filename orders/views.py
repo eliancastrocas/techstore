@@ -53,7 +53,12 @@ def order_detail(request, order_id):
     if not (is_admin or is_vendedor or order.user == request.user):
         order = get_object_or_404(Order, pk=order_id, user=request.user)
 
-    return render(request, "orders/order_detail.html", {"order": order})
+    return render(
+        request,
+        "orders/order_detail.html",
+        {"order": order, "is_admin": is_admin, "is_vendedor": is_vendedor},
+    )
+
 
 
 @login_required
@@ -219,6 +224,21 @@ def vendor_update_order_status(request, order_id, new_status):
 
 @login_required
 def warranty_claim(request, order_id):
+    """CLIENTE: crear garantía.
+
+    Reglas:
+    - Prohibido para VENDEDOR.
+    - Solo el dueño del pedido puede crear.
+    """
+    from django.http import HttpResponseForbidden
+
+    # Bloquear VENDEDOR (y superuser si aplica)
+    try:
+        if request.user.profile.is_vendedor() or request.user.is_superuser:
+            return HttpResponseForbidden("Permiso denegado")
+    except Exception:
+        pass
+
     order = get_object_or_404(Order, id=order_id, user=request.user)
 
     if request.method == "POST":
@@ -243,9 +263,24 @@ def warranty_claim(request, order_id):
     )
 
 
+
 @login_required
 def warranty_claim_list(request):
+    """CLIENTE: ver garantías.
+
+    Reglas:
+    - Prohibido para VENDEDOR.
+    """
+    from django.http import HttpResponseForbidden
+
+    try:
+        if request.user.profile.is_vendedor() or request.user.is_superuser:
+            return HttpResponseForbidden("Permiso denegado")
+    except Exception:
+        pass
+
     claims = WarrantyClaim.objects.filter(user=request.user).order_by("-created_at")
+
     return render(
         request,
         "orders/warranty_claim_list.html",
@@ -253,3 +288,83 @@ def warranty_claim_list(request):
             "claims": claims,
         },
     )
+
+
+
+@login_required
+def order_delete(request, order_id):
+    """AJAX delete order endpoint.
+
+    Reglas de permisos:
+    - SOLO VENDEDOR puede eliminar pedidos (Cliente NO).
+    - Solo pedidos con status='pending'.
+    """
+
+    from django.http import JsonResponse
+
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "message": "Método no permitido"}, status=405)
+
+    order = get_object_or_404(Order, pk=order_id)
+
+    # Permission: solo vendedor
+    is_vendedor = False
+    try:
+        is_vendedor = request.user.profile.is_vendedor()
+    except Exception:
+        is_vendedor = False
+
+    if not is_vendedor:
+        return JsonResponse({"ok": False, "message": "Permiso denegado"}, status=403)
+
+    # Business rule: only allow deleting pending orders
+    if order.status != "pending":
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": "Solo puedes eliminar pedidos pendientes.",
+            },
+            status=400,
+        )
+
+    order.delete()
+    return JsonResponse({"ok": True})
+
+
+
+@login_required
+def order_delete_confirm(request, order_id):
+    """Delete order endpoint (non-AJAX) for the modern modal in order_detail.
+
+    Reglas:
+    - SOLO VENDEDOR puede eliminar pedidos (Cliente NO).
+    - Solo pedidos con status='pending'.
+    """
+    from django.http import HttpResponseForbidden
+
+    if request.method != "POST":
+        return redirect("order_detail", order_id=order_id)
+
+    order = get_object_or_404(Order, pk=order_id)
+
+    # Permission: solo vendedor
+    is_vendedor = False
+    try:
+        is_vendedor = request.user.profile.is_vendedor()
+    except Exception:
+        is_vendedor = False
+
+    if not is_vendedor:
+        return HttpResponseForbidden("Permiso denegado")
+
+    # Business rule: only allow deleting pending orders
+    if order.status != "pending":
+        messages.error(request, "Solo puedes eliminar pedidos pendientes.")
+        return redirect("order_detail", order_id=order_id)
+
+    order.delete()
+    messages.success(request, "Pedido eliminado correctamente.")
+    return redirect("order_list")
+
+
+

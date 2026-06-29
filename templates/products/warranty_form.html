@@ -318,6 +318,83 @@
             margin-bottom: 40px;
         }
 
+        /* ========== DEVICE & PROBLEM (WARRANTY FORM) ========== */
+        .warranty-device-problem .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .warranty-device-problem .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--wood-dark);
+            font-size: 0.9rem;
+        }
+
+        .warranty-device-problem .form-group {
+            margin-bottom: 24px;
+        }
+
+        /* Forzar orden label arriba y control debajo */
+        .warranty-device-problem .warranty-device-problem-control,
+        .warranty-device-problem .input-icon {
+            display: block;
+        }
+
+        .warranty-device-problem .form-control-custom,
+        .warranty-device-problem .form-control {
+            width: 100% !important;
+            padding: 16px 20px;
+            border: 2px solid #e8ddd2;
+            border-radius: 14px;
+            background: var(--white);
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+            color: var(--text-dark);
+        }
+
+        .warranty-device-problem textarea.form-control-custom,
+        .warranty-device-problem textarea.form-control {
+            min-height: 140px;
+            resize: vertical;
+            padding: 18px 20px;
+        }
+
+        .warranty-device-problem .form-control-custom:hover,
+        .warranty-device-problem .form-control:hover {
+            border-color: var(--wood-accent);
+        }
+
+        .warranty-device-problem .form-control-custom:focus,
+        .warranty-device-problem .form-control:focus {
+            outline: none;
+            border-color: var(--wood-accent);
+            box-shadow: 0 0 0 4px rgba(192, 133, 82, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .warranty-device-problem .input-icon {
+            position: relative;
+        }
+
+        .warranty-device-problem .input-icon .icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            opacity: 0.6;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .warranty-device-problem .input-icon .form-control-custom {
+            padding-left: 50px;
+        }
+
         .step {
             display: flex;
             align-items: center;
@@ -415,7 +492,74 @@
             grid-column: 1 / -1;
         }
 
-        .form-group label {
+        /* ========== CONTACT SECTION (WARRANTY FORM) ========== */
+        .contact-section {
+            padding: 6px 0 0;
+        }
+
+        /* Contenedor exclusivo para evitar afectar otras secciones */
+        .warranty-contact {
+            width: 100%;
+        }
+
+        .warranty-contact .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        .warranty-contact .contact-card {
+            background: rgba(255,255,255,0.65);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(192, 133, 82, 0.22);
+            border-radius: 18px;
+            padding: 18px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            height: 100%;
+        }
+
+        .warranty-contact .contact-card-wide {
+            grid-column: 1 / -1;
+        }
+
+        .warranty-contact .contact-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .warranty-contact .contact-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(192, 133, 82, 0.15);
+            border: 1px solid rgba(192, 133, 82, 0.25);
+            font-size: 1.25rem;
+            flex: 0 0 auto;
+        }
+
+        .warranty-contact .contact-card-title {
+            font-weight: 800;
+            color: var(--wood-dark);
+            font-size: 0.98rem;
+            line-height: 1.2;
+        }
+
+        /* Márgenes/espaciados consistentes dentro de esta sección */
+        .warranty-contact .form-group {
+            margin-bottom: 16px;
+        }
+
+        .warranty-contact .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .warranty-contact .form-group label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
@@ -423,39 +567,41 @@
             font-size: 0.9rem;
         }
 
-        .form-control {
-            width: 100%;
+        /* Inputs generados por Django Forms */
+        .warranty-contact .contact-card .form-control-custom {
+            width: 100% !important;
             padding: 16px 20px;
             border: 2px solid #e8ddd2;
             border-radius: 14px;
-            font-size: 1rem;
             background: var(--white);
-            transition: all 0.3s ease;
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
             color: var(--text-dark);
         }
 
-        .form-control:focus {
-            outline: none;
-            border-color: var(--wood-accent);
-            box-shadow: 0 0 0 4px rgba(192, 133, 82, 0.1);
-            transform: translateY(-1px);
-        }
-
-        textarea.form-control {
-            min-height: 140px;
+        .warranty-contact .contact-card textarea.form-control-custom {
+            min-height: 60px;
             resize: vertical;
             padding: 18px 20px;
         }
 
-        .input-icon {
+        .warranty-contact .contact-card .form-control-custom:hover {
+            border-color: var(--wood-accent);
+        }
+
+        .warranty-contact .contact-card .form-control-custom:focus {
+            outline: none;
+            border-color: var(--wood-accent);
+            box-shadow: 0 0 0 4px rgba(192, 133, 82, 0.15);
+            transform: translateY(-1px);
+        }
+
+        /* Icon + input */
+        .warranty-contact .contact-card .input-icon {
             position: relative;
         }
 
-        .input-icon .form-control {
-            padding-left: 50px;
-        }
-
-        .input-icon .icon {
+        .warranty-contact .contact-card .input-icon .icon {
             position: absolute;
             left: 18px;
             top: 50%;
@@ -463,6 +609,11 @@
             font-size: 1.2rem;
             opacity: 0.6;
             z-index: 1;
+            pointer-events: none;
+        }
+
+        .warranty-contact .contact-card .input-icon .form-control-custom {
+            padding-left: 50px;
         }
 
         /* ========== FILE UPLOAD ========== */
@@ -609,6 +760,7 @@
         @media (max-width: 768px) {
             .services-grid { grid-template-columns: repeat(2, 1fr); }
             .form-grid { grid-template-columns: 1fr; gap: 20px; }
+            .contact-grid { grid-template-columns: 1fr; }
             .hero h1 { font-size: 2.2rem; }
             .steps { flex-wrap: wrap; gap: 10px; }
             .trust-badges { flex-direction: column; gap: 24px; }
@@ -616,6 +768,7 @@
             .sidebar { display: none; }
             .form-wrapper { padding: 30px 20px; }
         }
+
 
         @media (max-width: 480px) {
             .hero { padding: 40px 20px 60px; }
@@ -693,35 +846,43 @@
                 {% csrf_token %}
 
                 <!-- Sección 1: Información Personal -->
-                <div class="form-section">
-                    <div class="section-title">👤 Información de Contacto</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="{{ form.customer_name.id_for_label }}">Nombre completo</label>
-                            <div class="input-icon">
-                                <span class="icon">👤</span>
-                                {{ form.customer_name }}
+                <div class="form-section contact-section warranty-contact">
+                    <div class="section-title">📞 Teléfono y WhatsApp</div>
+
+                    <div class="contact-grid" style="grid-template-columns: 1fr;">
+                        <div class="contact-card contact-card-wide">
+
+                            <div class="contact-card-header">
+                            </div>
+
+
+
+
+                        </div>
+
+                        <div class="contact-card contact-card-wide">
+                            <div class="contact-card-header">
+                                <span class="contact-icon">📞</span>
+                                <span class="contact-card-title">Teléfono y WhatsApp</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.phone.id_for_label }}">Teléfono / WhatsApp</label>
+                                <div class="input-icon">
+                                    <span class="icon">📞</span>
+                                    {{ form.phone }}
+                                </div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="{{ form.phone.id_for_label }}">Teléfono / WhatsApp</label>
-                            <div class="input-icon">
-                                <span class="icon">📞</span>
-                                {{ form.phone }}
-                            </div>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="{{ form.email.id_for_label }}">Correo electrónico</label>
-                            <div class="input-icon">
-                                <span class="icon">✉️</span>
-                                {{ form.email }}
-                            </div>
-                        </div>
+
+
+
                     </div>
                 </div>
 
+
                 <!-- Sección 2: Dispositivo y Problema -->
-                <div class="form-section">
+                <div class="form-section warranty-device-problem">
                     <div class="section-title">📱 Dispositivo y Problema</div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -733,7 +894,9 @@
                         </div>
                         <div class="form-group full-width">
                             <label for="{{ form.issue_description.id_for_label }}">Descripción detallada del problema</label>
-                            {{ form.issue_description }}
+                            <div class="input-icon">
+                                {{ form.issue_description }}
+                            </div>
                         </div>
                     </div>
                 </div>

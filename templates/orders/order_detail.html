@@ -460,14 +460,21 @@
             {% endif %}
             {% if order.status == 'delivered' %}
             <p style="text-align: center; margin-top: 15px; color: #4caf50; font-size: 0.9rem;">
+
                 ✅ Tu pedido fue entregado el {{ order.updated_at|date:"d/m/Y" }}
             </p>
+            {% if not is_vendedor and order.user == request.user %}
+
             <div style="text-align: center; margin-top: 15px;">
                 <a href="{% url 'warranty_claim' order.id %}" class="btn btn-danger" style="background: #f44336; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                     📋 Solicitar Garantía
                 </a>
             </div>
             {% endif %}
+            {% endif %}
+
+
+
         </div>
         {% endif %}
 
@@ -552,7 +559,49 @@
                 <span>{{ order.total|currency }}</span>
             </div>
         </div>
-    </div>
+    {% if order.status != 'delivered' %}
+        {% if is_vendedor %}
+        <div style="margin-top: 20px;">
+            <button
+                type="button"
+                class="delete-order-page-btn"
+                onclick="window.openDeleteOrderDetailModal('{% url 'order_delete_confirm' order.id %}')">
+                Eliminar pedido
+            </button>
+        </div>
+        {% endif %}
+
+
+        <style>
+          .delete-order-page-btn{
+            width: 100%;
+            max-width: 520px;
+            display: block;
+            margin: 0 auto;
+            background: #f44336;
+            color: #fff;
+            border: 0;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-weight: 800;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: transform 120ms ease, background 120ms ease;
+          }
+          .delete-order-page-btn:hover{ background:#d32f2f; }
+          .delete-order-page-btn:active{ transform: translateY(1px); }
+          @media (max-width: 520px){ .delete-order-page-btn{ max-width: 100%; } }
+        </style>
+
+        {% if is_vendedor %}
+        {% include "orders/_delete_order_detail_modal_snippet.html" %}
+        {% endif %}
+
+    {% endif %}
+
+</div>
 </body>
 </html>
+
+
 

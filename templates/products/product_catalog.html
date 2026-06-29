@@ -296,9 +296,14 @@
                 <div class="product-info">
                     <h3>{{ product.name }}</h3>
                     <p class="description">{{ product.description|truncatechars:80 }}</p>
-                    <div class="product-footer">
+                        <div class="product-footer">
                         <div class="product-price">${{ product.price|floatformat:0 }}</div>
-                        <a href="{% url 'cart_add_product' product.id %}" class="btn-add">Agregar al carrito</a>
+                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                            <a href="{% url 'product_details' product.id %}" class="btn-add" style="background:rgba(0,0,0,0.06);color:var(--wood-dark);border:1px solid rgba(0,0,0,0.08);">Ver detalles</a>
+                            {% if user.is_authenticated and user.profile.is_cliente %}
+                                <a href="{% url 'cart_add_product' product.id %}" class="btn-add">Agregar al carrito</a>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>

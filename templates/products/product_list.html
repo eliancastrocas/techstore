@@ -388,7 +388,7 @@
                 {% if user.profile.is_vendedor %}
                 <div class="product-actions">
                     <a href="{% url 'product_update' product.pk %}" class="btn-edit">Editar</a>
-                    <a href="{% url 'product_delete' product.pk %}" class="btn-delete">Eliminar</a>
+                    <button type="button" class="btn-delete" onclick="openDeleteModal({{ product.pk }}, '{{ product.name|escapejs }}')">Eliminar</button>
                 </div>
                 {% endif %}
             </div>
@@ -406,6 +406,62 @@
         </div>
         {% endif %}
     </div>
+<div id="deleteModal" class="modal-overlay" style="display:none;">
+    <div class="state-modal-card" role="dialog" aria-modal="true">
+        <div class="state-modal-title" style="display:flex;align-items:center;gap:12px;">
+            <div class="modal-icon" style="background:rgba(244,67,54,0.12);border:1px solid rgba(244,67,54,0.25);">⛔</div>
+            <div>Confirmar eliminación</div>
+        </div>
+        <div class="state-modal-text" style="margin-top:8px;">¿De verdad desea eliminar el producto <b id="deleteProductName"></b>?</div>
+        <div class="state-modal-text" style="margin-top:6px;color:#b71c1c;font-weight:800;">La acción no se puede deshacer.</div>
+        <div class="modal-actions">
+            <button class="btn-secondary" type="button" onclick="closeDeleteModal()">Cancelar</button>
+            <form id="deleteForm" method="post">
+                {% csrf_token %}
+                <button class="btn-primary" type="submit">Sí, eliminar</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function getCsrfToken() {
+        const name = 'csrftoken';
+        const cookies = document.cookie ? document.cookie.split(';') : [];
+        for (let i = 0; i < cookies.length; i++) {
+            const c = cookies[i].trim();
+            if (c.startsWith(name + '=')) {
+                return decodeURIComponent(c.substring(name.length + 1));
+            }
+        }
+        return '';
+    }
+
+    function openDeleteModal(pk, name) {
+        const modal = document.getElementById('deleteModal');
+        const form = document.getElementById('deleteForm');
+        const nameEl = document.getElementById('deleteProductName');
+
+        nameEl.textContent = name || '';
+        // Endpoint existente (delete por pk)
+        form.action = '{% url "product_delete" pk=0 %}'.replace('/0/', '/' + pk + '/');
+
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('deleteModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDeleteModal();
+    });
+</script>
+
 </body>
 </html>
+
 

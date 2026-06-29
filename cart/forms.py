@@ -47,31 +47,47 @@ class CheckoutForm(forms.Form):
         cleaned_data = super().clean()
         payment = cleaned_data.get('payment_method')
         delivery = cleaned_data.get('delivery_type')
-        
+
+        # Validaciones dinámicas: SOLO los campos relevantes al método elegido.
         if payment == 'contra_entrega':
-            if not cleaned_data.get('pickup_full_name'):
-                self.add_error('pickup_full_name', 'Requerido para pago contra entrega')
-            if not cleaned_data.get('pickup_document'):
-                self.add_error('pickup_document', 'Requerido para pago contra entrega')
-            if not cleaned_data.get('pickup_phone'):
-                self.add_error('pickup_phone', 'Requerido para pago contra entrega')
-            if not cleaned_data.get('pickup_date'):
-                self.add_error('pickup_date', 'Requerido para pago contra entrega')
-        
-        if payment == 'transfer':
-            if not cleaned_data.get('bank_name'):
-                self.add_error('bank_name', 'Requerido para transferencia bancaria')
-            if not cleaned_data.get('bank_account_number'):
-                self.add_error('bank_account_number', 'Requerido para transferencia bancaria')
+            # Obligatorias COD
+            required_fields = [
+                ('pickup_full_name', 'Requerido para pago contra entrega'),
+                ('pickup_document', 'Requerido para pago contra entrega'),
+                ('pickup_phone', 'Requerido para pago contra entrega'),
+                ('pickup_date', 'Requerido para pago contra entrega'),
+            ]
+            for field_name, msg in required_fields:
+                if not cleaned_data.get(field_name):
+                    self.add_error(field_name, msg)
+
+            # Ocultar completamente campos de otros métodos -> no validar aquí.
+
+        elif payment == 'transfer':
+            # Obligatorias Transferencia
+            required_fields = [
+                ('bank_name', 'Requerido para transferencia bancaria'),
+                ('bank_account_number', 'Requerido para transferencia bancaria'),
+                # Según el requerimiento del usuario: también pedir nombre del titular y número de tarjeta.
+                ('card_holder_name', 'Requerido para transferencia bancaria'),
+                ('card_number', 'Requerido para transferencia bancaria'),
+            ]
+            for field_name, msg in required_fields:
+                if not cleaned_data.get(field_name):
+                    self.add_error(field_name, msg)
+
         elif payment == 'card':
+            # Mantener comportamiento para tarjeta (por compatibilidad)
             if not cleaned_data.get('card_holder_name'):
                 self.add_error('card_holder_name', 'Requerido para pago con tarjeta')
             if not cleaned_data.get('card_number'):
                 self.add_error('card_number', 'Requerido para pago con tarjeta')
-        
+
+        # Validación de entrega solo si corresponde
         if delivery == 'delivery':
             if not cleaned_data.get('delivery_address'):
                 self.add_error('delivery_address', 'Requerida para envío a domicilio')
-        
+
         return cleaned_data
+
 
